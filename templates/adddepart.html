@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Add Department{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1>Create Department</h1>
+        <form action="" method="post">
+            {% csrf_token %}
+            <div>
+                <label for="depart_name"><strong>Department Name:</strong></label><br>
+                <input type="text" name="depart_name" id="depart_name" required>
+            </div>
+            <div>
+                <label for="description"><strong>Department Description:</strong></label><br>
+                <input type="text" name="description" id="description" required>
+            </div>
+            <input type="submit" value="Create">
+        </form>
+    </div>
+{% endblock %}

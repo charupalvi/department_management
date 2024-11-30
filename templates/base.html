@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Department Management System{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+
+    
+        {% block styles %}{% endblock %}
+    
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h2>Dashboard</h2>
+        <a href="/">View Departments</a>
+        <a href="/adddepart">Create Department</a>
+        <a href="/modifydepart">Modify Departments</a>
+        <!-- <a href="#">Reports</a>
+        <a href="#">Settings</a> -->
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="content">
+        {% block content %}
+        <!-- Content will be inserted here -->
+        {% endblock %}
+    </div>
+
+</body>
+</html>
