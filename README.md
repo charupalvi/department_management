@@ -145,4 +145,4 @@ This project is licensed under the MIT License.
 ---
 
 ### Contact
-For any questions or feedback, please reach out at [your email or GitHub link].
+For any questions or feedback, please reach out at charudattpalvi@gmail.com.
