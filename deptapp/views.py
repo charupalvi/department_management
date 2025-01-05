@@ -1,5 +1,5 @@
 from django.shortcuts import render,redirect
-from deptapp.models import Depart
+from deptapp.models import Depart,Roles
 # Create your views here.
 
 
@@ -65,4 +65,55 @@ def Updatedepart(request,departid):
         n=request.POST['depart_name']
         d=request.POST['description']
         dt.update(depart_name=n,description=d)
+        return redirect('/')
+
+# Roles :-
+
+def viewRole(request):
+    data=Roles.objects.all()
+    print(type(data)) # QuerySet of List containing
+    print(data)
+    context={}
+    context['roles']=data
+    return render(request,'viewrole.html',context)
+
+
+def addRole(request):
+    print(request.method)
+    if request.method=='GET':
+        return render(request,'addrole.html')
+    else:
+        #capture data from form
+        n = request.POST['role_name']
+        d = request.POST['description']
+        print(n,d)
+
+        #add the data in db
+        r=Roles.objects.create(role_name=n,description=d)
+        r.save()
+        # return render(request,'index.html')
+        # return render(request,'index.html',context)
+        return redirect('/')
+    
+
+def Deleterole(request, roleid):
+    # Get the department object
+    role = Roles.objects.get(role_id=roleid)
+    # Update the status to False (inactive)
+    role.status = False
+    role.save()  # Save the updated status to the database
+    return redirect('/')
+
+def Updaterole(request,roleid):
+    # b=Depart.objects.filter(id=bookid)
+    r=Roles.objects.get(role_id=roleid) 
+    if request.method=='GET':
+        context={}
+        context['role']=d # used with GET method
+        return render(request,'updaterole.html',context)
+    else:
+        ur=Roles.objects.filter(role_id=roleid)
+        n=request.POST['role_name']
+        d=request.POST['description']
+        ur.update(role_name=n,description=d)
         return redirect('/')

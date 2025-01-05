@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Department List{% endblock %}
+
+{% block content %}
+    <h1>Department Management System</h1>
+    <table>
+        <tr>
+            <th>Sr.No</th>
+            <th>Role Name</th>
+            <th>Description</th>
+            <th>Edit</th>
+            <th>Delete</th>
+        </tr>
+        {% for role in roles %}
+        <tr>
+            <td>{{ role.role_id }}</td>
+            <td>{{ role.role_name }}</td>
+            <td>{{ role.description }}</td>
+            <td>
+                <button><a href="updaterole/{{ role.role_id }}">Edit</a></button>
+            </td>
+            <td>
+                <button class="delete"><a href="deleterole/{{ role.role_id }}">Delete</a></button>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

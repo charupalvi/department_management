@@ -6,21 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Department Management System{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-
-    
-        {% block styles %}{% endblock %}
-    
+    {% block styles %}{% endblock %}
 </head>
 <body>
 
     <!-- Sidebar -->
     <div class="sidebar">
         <h2>Dashboard</h2>
-        <a href="/">View Departments</a>
-        <a href="/adddepart">Create Department</a>
-        <a href="/modifydepart">Modify Departments</a>
-        <!-- <a href="#">Reports</a>
-        <a href="#">Settings</a> -->
+        <div class="dropdown">
+            <button class="dropdown-btn">Departments</button>
+            <ul class="dropdown-content">
+                <li><a href="/">View Departments</a></li>
+                <li><a href="/adddepart">Create Department</a></li>
+                <li><a href="/modifydepart">Modify Departments</a></li>
+            </ul>
+        </div>
+        <div class="dropdown">
+            <button class="dropdown-btn">Roles</button>
+            <ul class="dropdown-content">
+                <li><a href="/viewrole">View Roles</a></li>
+                <li><a href="/addrole">Create Role</a></li>
+            </ul>
+        </div>
     </div>
 
     <!-- Main Content Area -->
@@ -29,6 +36,72 @@
         <!-- Content will be inserted here -->
         {% endblock %}
     </div>
+
+    <script>
+        // Dropdown functionality
+        const dropdowns = document.querySelectorAll('.dropdown-btn');
+        dropdowns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.nextElementSibling.classList.toggle('show');
+            });
+        });
+
+        // Close dropdowns if clicked outside
+        window.addEventListener('click', (event) => {
+            if (!event.target.matches('.dropdown-btn')) {
+                const dropdownContents = document.querySelectorAll('.dropdown-content');
+                dropdownContents.forEach(content => content.classList.remove('show'));
+            }
+        });
+    </script>
+
+    <style>
+        .dropdown {
+            margin-bottom: 15px;
+        }
+
+        .dropdown-btn {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border: none;
+            width: 100%;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .dropdown-btn:hover {
+            background-color: #555;
+        }
+
+        .dropdown-content {
+            display: none;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-content li {
+            margin: 0;
+            padding: 0;
+        }
+
+        .dropdown-content li a {
+            display: block;
+            padding: 10px;
+            color: white;
+            background-color: #444;
+            text-decoration: none;
+        }
+
+        .dropdown-content li a:hover {
+            background-color: #666;
+        }
+    </style>
 
 </body>
 </html>
