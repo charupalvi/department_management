@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}Update Employee{% endblock %}
+
+{% block content %}
+    <div class="form-container">
+        <h1>Update Employee</h1>
+        <form method="POST" action="/updateemployee/{{ employee.id }}/">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="first_name"><strong>First Name:</strong></label>
+                <input type="text" id="first_name" name="first_name" value="{{ employee.first_name }}" required placeholder="Enter first name">
+            </div>
+
+            <div class="form-group">
+                <label for="last_name"><strong>Last Name:</strong></label>
+                <input type="text" id="last_name" name="last_name" value="{{ employee.last_name }}" required placeholder="Enter last name">
+            </div>
+
+            <div class="form-group">
+                <label for="email"><strong>Email:</strong></label>
+                <input type="email" id="email" name="email" value="{{ employee.email }}" required placeholder="Enter email">
+            </div>
+
+            <div class="form-group">
+                <label for="mobile"><strong>Mobile:</strong></label>
+                <input type="tel" id="mobile" name="mobile" value="{{ employee.mobile }}" pattern="[0-9]{10}" required placeholder="Enter mobile number">
+            </div>
+
+            <div class="form-group">
+                <label for="role"><strong>Select Role:</strong></label>
+                <select id="role" name="role" required>
+                    {% for role in roles %}
+                    <option value="{{ role.role_id }}" {% if role == employee.role %}selected{% endif %}>{{ role.role_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="department"><strong>Select Department:</strong></label>
+                <select id="department" name="department" required>
+                    {% for department in departments %}
+                    <option value="{{ department.dept_id }}" {% if department == employee.department %}selected{% endif %}>{{ department.depart_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="reporting_manager"><strong>Allocate Reporting Manager:</strong></label>
+                <select id="reporting_manager" name="reporting_manager">
+                    <option value="">-- Select Reporting Manager --</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}" {% if user == employee.reporting_manager %}selected{% endif %}>{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="date_of_joining"><strong>Date of Joining:</strong></label>
+                <input type="date" id="date_of_joining" name="date_of_joining" value="{{ employee.date_of_joining }}" required>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" class="submit-btn">Update Employee</button>
+            </div>
+        </form>
+    </div>
+
+    <style>
+        /* Form Styling (shared for add and update) */
+        .form-container {
+            border: 2px solid #4a90e2;
+            border-radius: 10px;
+            padding: 20px;
+            background-color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 600px;
+            margin: auto;
+            text-align: left;
+        }
+
+        .form-container h1 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        label {
+            display: inline-block;
+            width: 180px;
+            font-size: 14px;
+            color: #555;
+            margin-right: 10px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="date"],
+        select {
+            width: calc(100% - 200px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        button.submit-btn {
+            background-color: #4a90e2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button.submit-btn:hover {
+            background-color: #357ab7;
+        }
+
+        @media (max-width: 768px) {
+            .form-container {
+                width: 90%;
+            }
+
+            .form-group {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            label {
+                width: auto;
+                margin-right: 0;
+            }
+
+            input[type="text"],
+            input[type="email"],
+            input[type="tel"],
+            input[type="date"],
+            select {
+                width: 100%;
+            }
+        }
+    </style>
+{% endblock %}
