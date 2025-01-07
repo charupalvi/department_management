@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}Validate OTP{% endblock %}
+
+{% block content %}
+<div class="otp-wrapper">
+    <div class="otp-container">
+        <h1>Validate OTP</h1>
+        
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" placeholder="Enter your registered email" required>
+            </div>
+            <div class="form-group">
+                <label for="otp">OTP:</label>
+                <input type="text" id="otp" name="otp" placeholder="Enter OTP" required>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="validate-otp-btn">Validate OTP</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Inline CSS for OTP Validation -->
+<style>
+    .otp-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        {% comment %} height: 100vh; {% endcomment %}
+        {% comment %} background-color: rgba(0, 0, 0, 0.05); /* Slight overlay */ {% endcomment %}
+    }
+
+    .otp-container {
+        background-color: #fff;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 400px; /* Adjusted width */
+        border-radius: 10px;
+        text-align: center;
+        max-height: 500px; /* Adjusted height */
+    }
+
+    .otp-container h1 {
+        margin-bottom: 20px;
+        font-size: 24px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    label {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 5px;
+    }
+
+    input[type="email"],
+    input[type="text"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+
+    button.validate-otp-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s ease;
+    }
+
+    button.validate-otp-btn:hover {
+        background-color: #357ab7;
+    }
+
+    .message {
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+
+    .message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .message.success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+</style>
+{% endblock %}

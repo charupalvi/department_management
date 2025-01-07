@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="login-container">
+        <h1>Login</h1>
+        
+        {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                <p>{{ message }}</p>
+            </div>
+        {% endfor %}
+
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <div class="form-group">
+                <button type="submit" class="login-btn">Login</button>
+            </div>
+        </form>
+        
+        <p class="forgot-password">
+            <a href="{% url 'resetpasswordrequest' %}">Forgot Password?</a>
+        </p>
+    </div>
+</div>
+
+<!-- Inline CSS -->
+<style>
+    .login-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        {% comment %} height: 100vh; {% endcomment %}
+        {% comment %} background-color: rgba(0, 0, 0, 0.05); /* Adjust for slight overlay */ {% endcomment %}
+    }
+
+    .login-container {
+        background-color: #fff;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+        width: 400px; /* Adjusted width */
+        border-radius: 10px;
+        text-align: center;
+    }
+
+    .login-container h1 {
+        margin-bottom: 30px;
+        font-size: 28px;
+        color: #333;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    label {
+        font-size: 14px;
+        color: #555;
+        margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        font-size: 14px;
+        margin-top: 5px;
+    }
+
+    button.login-btn {
+        width: 100%;
+        padding: 12px;
+        background-color: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s ease;
+    }
+
+    button.login-btn:hover {
+        background-color: #357ab7;
+    }
+
+    .forgot-password {
+        margin-top: 20px;
+    }
+
+    .forgot-password a {
+        color: #4a90e2;
+        text-decoration: none;
+    }
+
+    .forgot-password a:hover {
+        text-decoration: underline;
+    }
+
+    .message {
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+
+    .message.error {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+
+    .message.success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+</style>
+{% endblock %}

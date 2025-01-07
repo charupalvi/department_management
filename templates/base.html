@@ -13,13 +13,19 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <h2>Dashboard</h2>
+        
+        <!-- Home Section -->
+        <div class="home-section">
+            <a href="/" class="home-btn">Home</a>
+        </div>
+
         <!-- Departments Section -->
         <div class="dropdown">
             <button class="dropdown-btn">Departments</button>
             <ul class="dropdown-content">
-                <li><a href="/">View Departments</a></li>
+                <li><a href="/modifydepart">View Departments</a></li>
                 <li><a href="/adddepart">Create Department</a></li>
-                <li><a href="/modifydepart">Modify Departments</a></li>
+                {% comment %} <li><a href="/modifydepart">Modify Departments</a></li> {% endcomment %}
             </ul>
         </div>
         
@@ -39,6 +45,18 @@
                 <li><a href="/viewemployees">View Employees</a></li>
                 <li><a href="/addemployee">Add Employee</a></li>
             </ul>
+        </div>
+        
+        <!-- Login/Logout Section -->
+        <div class="login-section">
+            {% if user.is_authenticated %}
+                <form method="POST" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="login-btn">Logout</button>
+                </form>
+            {% else %}
+                <a href="{% url 'login' %}" class="login-btn">Login</a>
+            {% endif %}
         </div>
     </div>
 
@@ -112,6 +130,47 @@
 
         .dropdown-content li a:hover {
             background-color: #666;
+        }
+
+        /* Home Section Style */
+        .home-section {
+            margin-bottom: 20px;
+        }
+
+        .home-btn {
+            display: block;
+            padding: 10px;
+            background-color: #4caf50;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .home-btn:hover {
+            background-color: #3e8e41;
+        }
+
+        /* Login/Logout Section Style */
+        .login-section {
+            margin-top: 30px;
+        }
+
+        .login-btn {
+            display: block;
+            width: 90%;
+            padding: 10px;
+            background-color: #4a90e2;
+            color: white;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none;
+            border: none;
+        }
+
+        .login-btn:hover {
+            background-color: #357ab7;
         }
     </style>
 
