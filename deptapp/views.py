@@ -1,11 +1,17 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from deptapp.models import Depart, Roles, Users
+from deptapp.models import Depart, Roles, Users,Task
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import IntegrityError
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.core.mail import send_mail
 from random import randint
+from django.db.models import Q
+from datetime import datetime
+from django.core.paginator import Paginator
+from django.http import JsonResponse
+
+
 
 # Utility function to check if the user is admin
 def is_admin(user):
@@ -304,3 +310,219 @@ def reset_password(request):
         messages.success(request, 'Password reset successful. Please login.')
         return redirect('/login/')
     return render(request, 'reset_password.html', {'email': email})
+
+
+# Tasks
+# View tasks
+
+# def view_tasks(request):
+#     # Get the status filter from the URL
+#     status_filter = request.GET.get('status', None)
+
+#     # Get the employee filter from the URL
+#     employee_filter = request.GET.get('employee_filter', None)
+
+#     # Get the start and end date filters from the URL
+#     start_date = request.GET.get('start_date', None)
+#     end_date = request.GET.get('end_date', None)
+
+#     # Filter tasks based on provided filters
+#     tasks = Task.objects.all()
+
+#     # Filter by status
+#     if status_filter:
+#         tasks = tasks.filter(status=status_filter)
+
+#     # Filter by employee (assigned_to)
+#     if employee_filter and employee_filter != 'all':
+#         tasks = tasks.filter(assigned_to_id=employee_filter)
+
+#     # Filter by date range (start_date and end_date)
+#     if start_date and end_date:
+#         tasks = tasks.filter(start_date__gte=start_date, end_date__lte=end_date)
+#     elif start_date:
+#         tasks = tasks.filter(start_date__gte=start_date)
+#     elif end_date:
+#         tasks = tasks.filter(end_date__lte=end_date)
+
+#     # Pagination: Show 10 tasks per page
+#     page = request.GET.get('page', 1)
+#     paginator = Paginator(tasks, 10)
+#     tasks = paginator.get_page(page)
+
+#     # Get the count of tasks by status
+#     completed_count = Task.objects.filter(status='Completed').count()
+#     in_progress_count = Task.objects.filter(status='In Progress').count()
+#     pending_count = Task.objects.filter(status='Pending').count()
+#     total_count = tasks.paginator.count
+
+#     # Get employees for the employee filter dropdown
+#     employees = Users.objects.all()
+
+#     # Context to pass to the template
+#     context = {
+#         'tasks': tasks,
+#         'status_filter': status_filter,
+#         'employee_filter': employee_filter,
+#         'start_date': start_date,
+#         'end_date': end_date,
+#         'employees': employees,
+#         'completed_count': completed_count,
+#         'in_progress_count': in_progress_count,
+#         'pending_count': pending_count,
+#         'total_count': total_count,
+#     }
+
+#     return render(request, 'view_tasks.html', context)
+
+# def view_tasks(request):
+#     # Fetch query parameters from GET request
+#     status_filter = request.GET.get('status', None)
+#     employee_filter = request.GET.get('employee_filter', None)
+#     start_date = request.GET.get('start_date', None)
+#     end_date = request.GET.get('end_date', None)
+
+#     tasks = Task.objects.all()
+
+#     # Apply filters based on status
+#     if status_filter:
+#         tasks = tasks.filter(status=status_filter)
+
+#     # Apply filter for employee if selected
+#     if employee_filter and employee_filter != 'all':
+#         tasks = tasks.filter(assigned_to__id=employee_filter)
+
+#     # Apply date range filter
+#     if start_date:
+#         tasks = tasks.filter(start_date__gte=start_date)
+#     if end_date:
+#         tasks = tasks.filter(end_date__lte=end_date)
+
+#     # Fetch statistics for the graph
+#     completed_count = tasks.filter(status='completed').count()
+#     in_progress_count = tasks.filter(status='in_progress').count()
+#     pending_count = tasks.filter(status='pending').count()
+
+#     # Paginate tasks
+#     from django.core.paginator import Paginator
+#     paginator = Paginator(tasks, 10)  # Show 10 tasks per page
+#     page_number = request.GET.get('page')
+#     tasks_page = paginator.get_page(page_number)
+
+#     # Fetch employees for the filter dropdown
+#     employees = Users.objects.all()
+
+#     return render(request, 'view_tasks.html', {
+#         'tasks': tasks_page,
+#         'completed_count': completed_count,
+#         'in_progress_count': in_progress_count,
+#         'pending_count': pending_count,
+#         'employees': employees,
+#     })
+    
+
+def view_tasks(request):
+    tasks = Task.objects.filter(assigned_to__reporting_manager=request.user)
+
+    # Filter by employee
+    employee_id = request.GET.get('employee_filter')
+    if employee_id and employee_id != "all":
+        tasks = tasks.filter(assigned_to_id=employee_id)
+
+    # Filter by status
+    status = request.GET.get('status')
+    if status:
+        tasks = tasks.filter(status=status)
+
+    # Filter by date range
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    if start_date and end_date:
+        tasks = tasks.filter(start_date__gte=start_date, end_date__lte=end_date)
+
+    # Task statistics (counts)
+    completed_count = tasks.filter(status='Completed').count()
+    in_progress_count = tasks.filter(status='In Progress').count()
+    pending_count = tasks.filter(status='Pending').count()
+
+    # Paginate tasks
+    paginator = Paginator(tasks, 10)  # Show 10 tasks per page
+    page_number = request.GET.get('page')
+    tasks_page = paginator.get_page(page_number)
+
+    # Fetch employees for the filter dropdown
+    # employees = Users.objects.all()
+    # employees = Users.objects.filter(tasks__isnull=False).distinct()
+    employees = Users.objects.filter(tasks__isnull=False).values('id', 'first_name', 'last_name').distinct()
+
+
+    # Pass tasks and task statistics to the template
+    context = {
+        'tasks': tasks,
+        'completed_count': completed_count,
+        'in_progress_count': in_progress_count,
+        'pending_count': pending_count,
+        'employees': employees,
+        'tasks_page':tasks_page
+    }
+
+    return render(request, 'view_tasks.html', context)
+    
+# Add a task
+def add_task(request):
+    if request.method == 'POST':
+        title = request.POST['title']
+        description = request.POST['description']
+        priority = request.POST['priority']
+        task_type = request.POST['task_type']
+        start_date = request.POST['start_date']
+        end_date = request.POST['end_date']
+        assigned_to = Users.objects.get(id=request.POST['assigned_to'])
+        Task.objects.create(
+            title=title, description=description, priority=priority,
+            task_type=task_type, start_date=start_date, end_date=end_date,
+            assigned_to=assigned_to, created_by=request.user
+        )
+        return redirect('viewtasks')
+    employees = Users.objects.filter(reporting_manager=request.user)
+    return render(request, 'add_task.html', {'employees': employees})
+
+# Edit a task
+def edit_task(request, task_id):
+    task = get_object_or_404(Task, task_id=task_id)
+    if request.method == 'POST':
+        task.title = request.POST['title']
+        task.description = request.POST['description']
+        task.priority = request.POST['priority']
+        task.task_type = request.POST['task_type']
+        task.start_date = request.POST['start_date']
+        task.end_date = request.POST['end_date']
+        task.status = request.POST['status']
+        task.save()
+        return redirect('viewtasks')
+    employees = Users.objects.filter(reporting_manager=request.user)
+    return render(request, 'edit_task.html', {'task': task, 'employees': employees})
+
+# Delete a task
+def delete_task(request, task_id):
+    task = get_object_or_404(Task, task_id=task_id)
+    task.delete()
+    return redirect('viewtasks')
+
+def mark_completed(request, task_id):
+    task = get_object_or_404(Task, task_id=task_id)  # Use task_id here
+    task.status = 'Completed'
+    task.save()
+    return redirect('viewtasks')
+
+def task_details(request, task_id):
+    # Use task_id for fetching task details
+    task = get_object_or_404(Task, task_id=task_id)
+
+    context = {
+        'task': task
+    }
+    
+    return render(request, 'task_details.html', context)
+
+

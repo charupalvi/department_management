@@ -29,4 +29,12 @@ urlpatterns = [
     path('resetpasswordrequest/', views.reset_password_request, name='resetpasswordrequest'),
     path('validateotp/', views.validate_otp, name='validateotp'),
     path('resetpassword/', views.reset_password, name='resetpassword'),
+    # Task :
+    path('viewtasks/', views.view_tasks, name='viewtasks'),
+    path('addtask/', views.add_task, name='addtask'),
+    path('edit_task/<int:task_id>/', views.edit_task, name='edit_task'),
+    path('delete_task/<int:task_id>/', views.delete_task, name='delete_task'),
+    path('mark_completed/<int:task_id>/', views.mark_completed, name='mark_completed'),
+    path('task-details/<int:task_id>/', views.task_details, name='task_details'),
+
 ]

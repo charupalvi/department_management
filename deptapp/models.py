@@ -59,6 +59,23 @@ class Users(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.username
 
+class Task(models.Model):
+    task_id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    priority = models.CharField(max_length=10, choices=[('High', 'High'), ('Medium', 'Medium'), ('Low', 'Low')])
+    task_type = models.CharField(max_length=20, choices=[('Individual', 'Individual'), ('Team', 'Team')])
+    assigned_to = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='tasks')
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='created_tasks')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=20, choices=[('Pending', 'Pending'), ('In Progress', 'In Progress'), ('Completed', 'Completed')], default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
 
 # class Users(models.Model):
 #     first_name = models.CharField(max_length=50)
