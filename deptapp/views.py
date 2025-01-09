@@ -153,13 +153,15 @@ def add_employee(request):
     if not user or not is_admin(user):
         messages.error(request, 'You do not have permission to perform this action.')
         return redirect('/')
-    
+
     if request.method == 'GET':
         roles = Roles.objects.all()
         departments = Depart.objects.filter(status=True)
+        users = Users.objects.filter(is_active=True)  # Get active users who can be selected as reporting managers
         return render(request, 'addemployee.html', {
             'roles': roles,
-            'departments': departments
+            'departments': departments,
+            'users': users  # Pass the users to the template
         })
     else:
         first_name = request.POST['first_name']
@@ -196,14 +198,16 @@ def add_employee(request):
                 'username_error': True
             })
 
+
 # Update employee (only for admins)
 def update_employee(request, employee_id):
     user = Users.objects.get(username=request.user.username) if request.user.is_authenticated else None
     if not user or not is_admin(user):
         messages.error(request, 'You do not have permission to perform this action.')
         return redirect('/')
-    
+
     employee = get_object_or_404(Users, id=employee_id)
+
     if request.method == 'POST':
         employee.first_name = request.POST['first_name']
         employee.last_name = request.POST['last_name']
@@ -212,17 +216,24 @@ def update_employee(request, employee_id):
         employee.role = Roles.objects.get(role_id=request.POST['role'])
         employee.department = Depart.objects.get(dept_id=request.POST['department'])
         employee.date_of_joining = request.POST['date_of_joining']
+        
+        # Update the reporting manager if selected
+        reporting_manager_id = request.POST.get('reporting_manager')
+        if reporting_manager_id:
+            employee.reporting_manager = Users.objects.get(id=reporting_manager_id)
+        
         employee.save()
         return redirect('/viewemployees')
     else:
         roles = Roles.objects.all()
         departments = Depart.objects.filter(status=True)
+        users = Users.objects.filter(is_active=True)  # Get active users who can be selected as reporting managers
         return render(request, 'update_delete_employee.html', {
             'employee': employee,
             'roles': roles,
-            'departments': departments
+            'departments': departments,
+            'users': users  # Pass the users to the template
         })
-
 # Delete employee (only for admins)
 def delete_employee(request, employee_id):
     user = Users.objects.get(username=request.user.username) if request.user.is_authenticated else None
@@ -314,131 +325,104 @@ def reset_password(request):
 
 # Tasks
 # View tasks
-
+    
 # def view_tasks(request):
-#     # Get the status filter from the URL
-#     status_filter = request.GET.get('status', None)
+#     tasks = Task.objects.filter(assigned_to__reporting_manager=request.user)
 
-#     # Get the employee filter from the URL
-#     employee_filter = request.GET.get('employee_filter', None)
+#     # Filter by employee
+#     employee_id = request.GET.get('employee_filter')
+#     if employee_id and employee_id != "all":
+#         tasks = tasks.filter(assigned_to_id=employee_id)
+    
+#     status = request.GET.get('status', '').strip()      
+#     if status:
+#         status_mapping = {              # Map the lowercase query params to the title-cased choices in the database
+#             'pending': 'Pending',
+#             'in_progress': 'In Progress',
+#             'completed': 'Completed',
+#             }
+#         db_status = status_mapping.get(status.lower())
+#         if db_status:
+#             tasks = tasks.filter(status__iexact=db_status)  # Case-insensitive match
+# # Filter by date range
+#     start_date = request.GET.get('start_date')
+#     end_date = request.GET.get('end_date')
 
-#     # Get the start and end date filters from the URL
-#     start_date = request.GET.get('start_date', None)
-#     end_date = request.GET.get('end_date', None)
-
-#     # Filter tasks based on provided filters
-#     tasks = Task.objects.all()
-
-#     # Filter by status
-#     if status_filter:
-#         tasks = tasks.filter(status=status_filter)
-
-#     # Filter by employee (assigned_to)
-#     if employee_filter and employee_filter != 'all':
-#         tasks = tasks.filter(assigned_to_id=employee_filter)
-
-#     # Filter by date range (start_date and end_date)
 #     if start_date and end_date:
-#         tasks = tasks.filter(start_date__gte=start_date, end_date__lte=end_date)
-#     elif start_date:
-#         tasks = tasks.filter(start_date__gte=start_date)
-#     elif end_date:
-#         tasks = tasks.filter(end_date__lte=end_date)
+#         # Parse date strings into datetime.date objects
+#         start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+#         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
-#     # Pagination: Show 10 tasks per page
-#     page = request.GET.get('page', 1)
-#     paginator = Paginator(tasks, 10)
-#     tasks = paginator.get_page(page)
+#         tasks = tasks.filter(
+#             start_date__lte=end_date,
+#             end_date__gte=start_date
+#         )
 
-#     # Get the count of tasks by status
-#     completed_count = Task.objects.filter(status='Completed').count()
-#     in_progress_count = Task.objects.filter(status='In Progress').count()
-#     pending_count = Task.objects.filter(status='Pending').count()
-#     total_count = tasks.paginator.count
-
-#     # Get employees for the employee filter dropdown
-#     employees = Users.objects.all()
-
-#     # Context to pass to the template
-#     context = {
-#         'tasks': tasks,
-#         'status_filter': status_filter,
-#         'employee_filter': employee_filter,
-#         'start_date': start_date,
-#         'end_date': end_date,
-#         'employees': employees,
-#         'completed_count': completed_count,
-#         'in_progress_count': in_progress_count,
-#         'pending_count': pending_count,
-#         'total_count': total_count,
-#     }
-
-#     return render(request, 'view_tasks.html', context)
-
-# def view_tasks(request):
-#     # Fetch query parameters from GET request
-#     status_filter = request.GET.get('status', None)
-#     employee_filter = request.GET.get('employee_filter', None)
-#     start_date = request.GET.get('start_date', None)
-#     end_date = request.GET.get('end_date', None)
-
-#     tasks = Task.objects.all()
-
-#     # Apply filters based on status
-#     if status_filter:
-#         tasks = tasks.filter(status=status_filter)
-
-#     # Apply filter for employee if selected
-#     if employee_filter and employee_filter != 'all':
-#         tasks = tasks.filter(assigned_to__id=employee_filter)
-
-#     # Apply date range filter
-#     if start_date:
-#         tasks = tasks.filter(start_date__gte=start_date)
-#     if end_date:
-#         tasks = tasks.filter(end_date__lte=end_date)
-
-#     # Fetch statistics for the graph
-#     completed_count = tasks.filter(status='completed').count()
-#     in_progress_count = tasks.filter(status='in_progress').count()
-#     pending_count = tasks.filter(status='pending').count()
+#     print("Start Date:", start_date)
+#     print("End Date:", end_date)
+#     # Task statistics (counts)
+#     completed_count = tasks.filter(status='Completed').count()
+#     in_progress_count = tasks.filter(status='In Progress').count()
+#     pending_count = tasks.filter(status='Pending').count()
 
 #     # Paginate tasks
-#     from django.core.paginator import Paginator
 #     paginator = Paginator(tasks, 10)  # Show 10 tasks per page
 #     page_number = request.GET.get('page')
 #     tasks_page = paginator.get_page(page_number)
 
 #     # Fetch employees for the filter dropdown
-#     employees = Users.objects.all()
+#     # employees = Users.objects.all()
+#     # employees = Users.objects.filter(tasks__isnull=False).distinct()
+#     employees = Users.objects.filter(tasks__isnull=False).values('id', 'first_name', 'last_name').distinct()
 
-#     return render(request, 'view_tasks.html', {
-#         'tasks': tasks_page,
+
+#     # Pass tasks and task statistics to the template
+#     context = {
+#         'tasks': tasks,
 #         'completed_count': completed_count,
 #         'in_progress_count': in_progress_count,
 #         'pending_count': pending_count,
 #         'employees': employees,
-#     })
-    
+#         'tasks_page':tasks_page
+#     }
 
+#     return render(request, 'view_tasks.html', context)
+    
+    
 def view_tasks(request):
+    # Start with all tasks assigned to the reporting manager
     tasks = Task.objects.filter(assigned_to__reporting_manager=request.user)
 
-    # Filter by employee
+    # Filter by employee (if selected)
     employee_id = request.GET.get('employee_filter')
     if employee_id and employee_id != "all":
         tasks = tasks.filter(assigned_to_id=employee_id)
 
-    # Filter by status
-    status = request.GET.get('status')
+    # Filter by status (if selected)
+    status = request.GET.get('status', '').strip()      
     if status:
-        tasks = tasks.filter(status=status)
+        status_mapping = {
+            'pending': 'Pending',
+            'in_progress': 'In Progress',
+            'completed': 'Completed',
+        }
+        db_status = status_mapping.get(status.lower())
+        if db_status:
+            tasks = tasks.filter(status__iexact=db_status)
 
-    # Filter by date range
+    # Filter by date range (if selected)
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
+
     if start_date and end_date:
-        tasks = tasks.filter(start_date__gte=start_date, end_date__lte=end_date)
+        # Parse the date strings into datetime.date objects
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        tasks = tasks.filter(
+            start_date__lte=end_date,  # Task start date before or on the end date
+            end_date__gte=start_date   # Task end date after or on the start date
+        )
 
     # Task statistics (counts)
     completed_count = tasks.filter(status='Completed').count()
@@ -451,10 +435,7 @@ def view_tasks(request):
     tasks_page = paginator.get_page(page_number)
 
     # Fetch employees for the filter dropdown
-    # employees = Users.objects.all()
-    # employees = Users.objects.filter(tasks__isnull=False).distinct()
     employees = Users.objects.filter(tasks__isnull=False).values('id', 'first_name', 'last_name').distinct()
-
 
     # Pass tasks and task statistics to the template
     context = {
@@ -463,11 +444,11 @@ def view_tasks(request):
         'in_progress_count': in_progress_count,
         'pending_count': pending_count,
         'employees': employees,
-        'tasks_page':tasks_page
+        'tasks_page': tasks_page
     }
 
     return render(request, 'view_tasks.html', context)
-    
+
 # Add a task
 def add_task(request):
     if request.method == 'POST':

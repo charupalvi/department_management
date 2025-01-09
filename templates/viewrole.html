@@ -22,7 +22,7 @@
                 <button><a href="updaterole/{{ role.role_id }}">Edit</a></button>
             </td>
             <td>
-                <button class="delete"><a href="deleterole/{{ role.role_id }}">Delete</a></button>
+                <button class="delete"><a href="deleterole/{{ role.role_id }}" onclick="return confirm('Are you sure?');">Delete</a></button>
             </td>
         </tr>
         {% endfor %}

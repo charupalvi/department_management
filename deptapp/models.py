@@ -76,6 +76,23 @@ class Task(models.Model):
     def __str__(self):
         return self.title
 
+class Task_Assignment(models.Model):
+    assignment_id = models.AutoField(primary_key=True)  # Unique identification of task
+    task = models.ForeignKey('Task', on_delete=models.CASCADE, related_name='assignments')  # Reference to Task table
+    employee = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='assigned_tasks')  # Reference to Employee table (assigned to)
+    assigned_by = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='tasks_assigned')  # Reference to Employee table (assigned by)
+    assigned_date = models.DateTimeField(auto_now_add=True)  # Timestamp at which task is assigned
+    status = models.CharField(
+        max_length=200,
+        choices=[('Pending', 'Pending'), ('In Progress', 'In Progress'), ('Completed', 'Completed')],
+        default='Pending'
+    )  # Status of the task
+    completed_at = models.DateTimeField(null=True, blank=True)  # Timestamp at which task is completed
+
+    def __str__(self):
+        return f"Assignment {self.assignment_id} - Task {self.task.title}"
+
+
 
 # class Users(models.Model):
 #     first_name = models.CharField(max_length=50)
