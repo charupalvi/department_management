@@ -36,5 +36,10 @@ urlpatterns = [
     path('delete_task/<int:task_id>/', views.delete_task, name='delete_task'),
     path('mark_completed/<int:task_id>/', views.mark_completed, name='mark_completed'),
     path('task-details/<int:task_id>/', views.task_details, name='task_details'),
-
+    #Review Employee:
+    path('reviews/', views.view_reviews, name='view_reviews'),
+    path('addreview/', views.add_review, name='add_review'),
+    path('see-comments/<int:review_id>/', views.see_comments, name='see_comments'),
+    path('edit-review/<int:review_id>/', views.edit_review, name='edit_review'),
+    path('delete-review/<int:review_id>/', views.delete_review, name='delete_review'),
 ]

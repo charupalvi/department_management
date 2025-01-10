@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from deptapp.models import Depart, Roles, Users,Task
+from deptapp.models import Depart, Roles, Users,Task,Review
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import IntegrityError
 from django.contrib import messages
@@ -10,6 +10,8 @@ from django.db.models import Q
 from datetime import datetime
 from django.core.paginator import Paginator
 from django.http import JsonResponse
+from django.db.models import Count
+
 
 
 
@@ -506,4 +508,206 @@ def task_details(request, task_id):
     
     return render(request, 'task_details.html', context)
 
+# Review Employees
 
+def view_reviews(request):
+    # Extract query parameters for filtering
+    department_filter = request.GET.get('department')
+    employee_filter = request.GET.get('employee_filter')
+    review_period = request.GET.get('review_period')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    rating_filter = request.GET.get('rating')
+    search_employee = request.GET.get('search_employee')
+
+    # Start with the base query
+    reviews = Review.objects.all()
+
+    # Apply filters
+    if department_filter:
+        reviews = reviews.filter(employee__department__id=department_filter)
+    if employee_filter:
+        reviews = reviews.filter(employee__id=employee_filter)
+    if review_period:
+        reviews = reviews.filter(review_period=review_period)
+    if start_date and end_date:
+        reviews = reviews.filter(review_date__range=[start_date, end_date])
+    if rating_filter:
+        if rating_filter == "1-5":
+            reviews = reviews.filter(rating__range=(1, 5))
+        elif rating_filter == "6-8":
+            reviews = reviews.filter(rating__range=(6, 8))
+        elif rating_filter == "9+":
+            reviews = reviews.filter(rating__gte=9)
+    if search_employee:
+        reviews = reviews.filter(
+            Q(employee__first_name__icontains=search_employee) |
+            Q(employee__last_name__icontains=search_employee)
+        )
+
+    # Pagination
+    paginator = Paginator(reviews, 10)
+    page_number = request.GET.get('page')
+    reviews_page = paginator.get_page(page_number)
+
+    # Statistics for each period
+    monthly_count = Review.objects.filter(review_period='Monthly').count()
+    quarterly_count = Review.objects.filter(review_period='Quarterly').count()
+    annual_count = Review.objects.filter(review_period='Annually').count()
+
+    monthly_employees = Users.objects.filter(reviews__review_period='Monthly').distinct().count()
+    quarterly_employees = Users.objects.filter(reviews__review_period='Quarterly').distinct().count()
+    annual_employees = Users.objects.filter(reviews__review_period='Annually').distinct().count()
+
+    # Calculate number of reviews per rating range for each period
+    monthly_range_1_5 = Review.objects.filter(review_period='Monthly', rating__range=(1, 5)).count()
+    monthly_range_6_8 = Review.objects.filter(review_period='Monthly', rating__range=(6, 8)).count()
+    monthly_range_9_plus = Review.objects.filter(review_period='Monthly', rating__gte=9).count()
+
+    quarterly_range_1_5 = Review.objects.filter(review_period='Quarterly', rating__range=(1, 5)).count()
+    quarterly_range_6_8 = Review.objects.filter(review_period='Quarterly', rating__range=(6, 8)).count()
+    quarterly_range_9_plus = Review.objects.filter(review_period='Quarterly', rating__gte=9).count()
+
+    annual_range_1_5 = Review.objects.filter(review_period='Annually', rating__range=(1, 5)).count()
+    annual_range_6_8 = Review.objects.filter(review_period='Annually', rating__range=(6, 8)).count()
+    annual_range_9_plus = Review.objects.filter(review_period='Annually', rating__gte=9).count()
+
+    # Number of employees per rating range
+    range_1_5_employees = Review.objects.filter(rating__range=(1, 5)).values('employee').distinct().count()
+    range_6_8_employees = Review.objects.filter(rating__range=(6, 8)).values('employee').distinct().count()
+    range_9_plus_employees = Review.objects.filter(rating__gte=9).values('employee').distinct().count()
+
+    # Pass data to the template
+    context = {
+        'reviews_page': reviews_page,
+        'departments': Depart.objects.all(),
+        'employees': Users.objects.all(),
+        'monthly_count': monthly_count,
+        'quarterly_count': quarterly_count,
+        'annual_count': annual_count,
+        'monthly_employees': monthly_employees,
+        'quarterly_employees': quarterly_employees,
+        'annual_employees': annual_employees,
+        'monthly_range_1_5': monthly_range_1_5,
+        'monthly_range_6_8': monthly_range_6_8,
+        'monthly_range_9_plus': monthly_range_9_plus,
+        'quarterly_range_1_5': quarterly_range_1_5,
+        'quarterly_range_6_8': quarterly_range_6_8,
+        'quarterly_range_9_plus': quarterly_range_9_plus,
+        'annual_range_1_5': annual_range_1_5,
+        'annual_range_6_8': annual_range_6_8,
+        'annual_range_9_plus': annual_range_9_plus,
+        'range_1_5_employees': range_1_5_employees,
+        'range_6_8_employees': range_6_8_employees,
+        'range_9_plus_employees': range_9_plus_employees,
+    }
+    return render(request, 'view_review.html', context)
+
+def add_review(request):
+    if request.method == 'POST':
+        # Handle form submission and create a review
+        employee_id = request.POST.get('employee_id')
+        rating = request.POST.get('rating')
+        review_period = request.POST.get('review_period')
+        review_title = request.POST.get('review_title')
+        comments = request.POST.get('comments')
+        review_date = request.POST.get('review_date')
+
+        # Ensure logged-in user is the reviewer
+        reviewer = request.user
+
+        # Create a new review object
+        review = Review(
+            employee_id=employee_id,
+            rating=rating,
+            review_period=review_period,
+            review_title=review_title,
+            comments=comments,
+            review_date=review_date,
+            reviewed_by=reviewer
+        )
+        review.save()
+
+        return redirect('view_reviews')
+
+    # Fetch employees to populate the dropdown
+    employees = Users.objects.all()
+    review_periods = Review._meta.get_field('review_period').choices  # Monthly, Quarterly, Annually
+
+    context = {
+        'employees': employees,
+        'review_periods': review_periods,
+    }
+
+    return render(request, 'add_review.html', context)
+
+def see_comments(request, review_id):
+    # Fetch the review by its ID
+    review = get_object_or_404(Review, review_id=review_id)
+
+    # Pass the review (which already includes the comments field) to the context
+    context = {
+        'review': review
+    }
+
+    # Render the comments page with the review
+    return render(request, 'see_comments.html', context)
+
+
+def edit_review(request, review_id):
+    # Fetch the review to edit
+    review = get_object_or_404(Review, review_id=review_id)
+    
+    # Fetch employees and review periods for dropdown options
+    employees = Users.objects.all()
+    review_periods = Review._meta.get_field('review_period').choices
+    
+    # Create a list of ratings (1 to 10)
+    ratings = list(range(1, 11))
+
+    # If the form is submitted (POST request)
+    if request.method == 'POST':
+        # Get the data from the form
+        employee_id = request.POST.get('employee_id')
+        rating = request.POST.get('rating')
+        review_period = request.POST.get('review_period')
+        review_title = request.POST.get('review_title')
+        comments = request.POST.get('comments')  # Get the updated comments
+        review_date = request.POST.get('review_date')
+
+        # Update the review with the new values
+        review.employee_id = employee_id
+        review.rating = rating
+        review.review_period = review_period
+        review.review_title = review_title
+        review.comments = comments  # Update comments
+        review.review_date = review_date
+
+        # Save the updated review
+        review.save()
+
+        # Redirect to the review list with a success message
+        messages.success(request, "Review updated successfully!")
+        return redirect('view_reviews')
+
+    # If the form is not submitted (GET request), render the edit form
+    context = {
+        'review': review,
+        'employees': employees,
+        'review_periods': review_periods,
+        'ratings': ratings,  # Pass the ratings list to the template
+    }
+    return render(request, 'edit_review.html', context)
+
+def delete_review(request, review_id):
+    # Fetch the review to delete by its ID
+    review = get_object_or_404(Review, review_id=review_id)
+    
+    # Delete the review
+    review.delete()
+    
+    # Display a success message
+    messages.success(request, "Review deleted successfully!")
+    
+    # Redirect back to the review list
+    return redirect('view_reviews')

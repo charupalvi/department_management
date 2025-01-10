@@ -91,6 +91,21 @@ class Task_Assignment(models.Model):
 
     def __str__(self):
         return f"Assignment {self.assignment_id} - Task {self.task.title}"
+    
+class Review(models.Model):
+    review_id = models.AutoField(primary_key=True)  # Unique identification of the review
+    review_title = models.CharField(max_length=100)  # Title or small details of the review
+    review_date = models.DateField()  # Date on which the review is taken
+    employee = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='reviews')  # Reference to employee reviewed
+    reviewed_by = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='reviews_given')  # Reference to reviewer
+    review_period = models.CharField(max_length=100, choices=[('Monthly', 'Monthly'), ('Quarterly', 'Quarterly'), ('Annually', 'Annually')])  # Review period
+    rating = models.IntegerField()  # Rating given to employee between 1-10
+    comments = models.CharField(max_length=300, blank=True, null=True)  # Extra comments by reviewer
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp when review was first created
+    updated_at = models.DateTimeField(auto_now=True)  # Timestamp when review was last updated
+
+    def __str__(self):
+        return f"Review {self.review_id} for {self.employee.username}"
 
 
 
