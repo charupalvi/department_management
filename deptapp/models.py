@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin,AbstractBaseUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager, PermissionsMixin, AbstractBaseUser
 
 # Create your models here.
 class Depart(models.Model):
@@ -107,6 +107,55 @@ class Review(models.Model):
     def __str__(self):
         return f"Review {self.review_id} for {self.employee.username}"
 
+class Leave(models.Model):
+    class LeaveType(models.TextChoices):
+        SICK_LEAVE = 'SL', 'Sick Leave'
+        CASUAL_LEAVE = 'CL', 'Casual Leave'
+        PRIVILEGE_LEAVE = 'PL', 'Privilege Leave'
+        LEAVE_WITHOUT_PAY = 'LWP', 'Leave Without Pay'
+
+    class Status(models.TextChoices):
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+        PENDING = 'pending', 'Pending'
+
+    leave_id = models.AutoField(primary_key=True)
+    employee = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='leaves')
+    leave_type = models.CharField(max_length=3, choices=LeaveType.choices)
+    reason = models.CharField(max_length=200)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    total_days = models.PositiveIntegerField()
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
+    approved_by = models.ForeignKey('Users', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_leaves')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Leave {self.leave_id} ({self.leave_type}) for Employee {self.employee.username}"
+
+class LeaveQuota(models.Model):
+    class LeaveType(models.TextChoices):
+        SICK_LEAVE = 'SL', 'Sick Leave'
+        CASUAL_LEAVE = 'CL', 'Casual Leave'
+        PRIVILEGE_LEAVE = 'PL', 'Privilege Leave'
+        LEAVE_WITHOUT_PAY = 'LWP', 'Leave Without Pay'
+
+    quota_id = models.AutoField(primary_key=True)
+    employee = models.ForeignKey('Users', on_delete=models.CASCADE, related_name='leave_quotas')
+    leave_type = models.CharField(max_length=3, choices=LeaveType.choices)
+    total_quota = models.PositiveIntegerField()
+    used_quota = models.PositiveIntegerField(default=0)
+    remain_quota = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        self.remain_quota = self.total_quota - self.used_quota
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Quota {self.quota_id} for Employee {self.employee.username} ({self.leave_type})"
 
 
 # class Users(models.Model):

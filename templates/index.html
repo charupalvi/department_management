@@ -4,16 +4,17 @@
 {% block title %}Welcome{% endblock %}
 
 {% block content %}
-    <h1>Welcome to the Department Management System</h1>
+<div class="welcome-container">
+    <h1 class="page-title">Welcome to the Department Management System</h1>
 
     <div class="welcome-message">
         {% if is_authenticated %}
-            <p>Hello, <strong>{{ user.first_name }} {{ user.last_name }}</strong>!</p>
-            <p>Your username: <strong>{{ user.username }}</strong></p>
-            <p>Your role: <strong>{{ role }}</strong></p>
+            <p class="greeting">Hello, <strong>{{ user.first_name }} {{ user.last_name }}</strong>!</p>
+            <p class="info">Your username: <strong>{{ user.username }}</strong></p>
+            <p class="info">Your role: <strong>{{ role }}</strong></p>
         {% else %}
-            <p>Hello, <strong>Guest User</strong>!</p>
-            <p>Please <a href="{% url 'login' %}">login</a> to access more features.</p>
+            <p class="greeting">Hello, <strong>Guest User</strong>!</p>
+            <p class="info">Please <a href="{% url 'login' %}" class="login-link">login</a> to access more features.</p>
         {% endif %}
     </div>
 
@@ -26,26 +27,196 @@
         </div>
     {% endif %}
 
-    <style>
-        .messages {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f8d7da;
-            border-radius: 5px;
-        }
+    <!-- Hidden message container -->
+    <div id="leaveMessage" class="messages" style="display:none;">
+        <p class="alert alert-warning">You need to be logged in to access Leave Management.</p>
+    </div>
 
-        .alert {
-            padding: 10px;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
-            border-radius: 5px;
-        }
+    <!-- Action Boxes -->
+    <div class="action-boxes">
+        <div class="box box-blue">
+            <a href="{% url 'viewtasks' %}" class="box-link">Tasks Management</a>
+        </div>
+        <div class="box box-green">
+            <a href="{% url 'view_reviews' %}" class="box-link">Performance Review</a>
+        </div>
+        <div class="box box-orange">
+            {% if user.is_authenticated %}
+                <a href="{% url 'leave_dashboard' %}" class="box-link">Leave Management</a>
+            {% else %}
+                <a class="box-link" id="leaveManagementBtn">Leave Management</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
-        .alert-danger {
-            color: #721c24;
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-        }
-    </style>
+<style>
+    /* General Layout */
+    .welcome-container {
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 40px;
+        background-color: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        font-family: 'Roboto', sans-serif;
+        background: linear-gradient(135deg, #f7f7f7, #ffffff);
+    }
+
+    .page-title {
+        text-align: center;
+        color: #4a90e2;
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 25px;
+        letter-spacing: 2px;
+    }
+
+    .greeting {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .info {
+        font-size: 16px;
+        color: #555;
+    }
+
+    .login-link {
+        color: #4a90e2;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+    .login-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Error Messages */
+    .messages {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8d7da;
+        border-radius: 5px;
+    }
+
+    .alert {
+        padding: 12px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+        border-radius: 6px;
+        font-size: 16px;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        border-color: #ffeeba;
+        color: #856404;
+    }
+
+    /* Action Boxes */
+    .action-boxes {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        gap: 20px;
+        flex-wrap: nowrap;
+    }
+
+    .box {
+        width: 30%;
+        padding: 30px;
+        text-align: center;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .box:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .box-link {
+        display: block;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        text-decoration: none;
+        padding: 15px 25px;
+        border-radius: 6px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Specific Colors for Boxes */
+    .box-blue {
+        background-color: #4a90e2;
+    }
+
+    .box-blue .box-link {
+        background-color: #4a90e2;
+    }
+
+    .box-blue .box-link:hover {
+        background-color: #357ab7;
+    }
+
+    .box-green {
+        background-color: #28a745;
+    }
+
+    .box-green .box-link {
+        background-color: #28a745;
+    }
+
+    .box-green .box-link:hover {
+        background-color: #218838;
+    }
+
+    .box-orange {
+        background-color: #ff5722;
+    }
+
+    .box-orange .box-link {
+        background-color: #ff5722;
+    }
+
+    .box-orange .box-link:hover {
+        background-color: #e64a19;
+    }
+
+    /* Disable Leave Management Box */
+    .disabled {
+        background-color: #ccc;
+        color: #666;
+        cursor: not-allowed;
+    }
+
+    /* Animation for Button */
+    #leaveManagementBtn {
+        padding: 15px 25px;
+        background-color: #ff5722;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    #leaveManagementBtn:hover {
+        background-color: #e64a19;
+    }
+
+</style>
+
+<script>
+    // JavaScript to handle the button click and show the message
+    document.getElementById("leaveManagementBtn")?.addEventListener("click", function() {
+        document.getElementById("leaveMessage").style.display = "block";
+    });
+</script>
+
 {% endblock %}

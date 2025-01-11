@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from deptapp.models import Depart, Roles, Users,Task,Review
+from deptapp.models import Depart, Roles, Users,Task,Review,Leave,LeaveQuota
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import IntegrityError
 from django.contrib import messages
@@ -11,6 +11,13 @@ from datetime import datetime
 from django.core.paginator import Paginator
 from django.http import JsonResponse
 from django.db.models import Count
+from django.contrib.auth.decorators import login_required
+from django.db.models import F
+from collections import defaultdict
+from django.http import HttpResponseForbidden
+from collections import Counter
+
+
 
 
 
@@ -390,8 +397,11 @@ def reset_password(request):
 
 #     return render(request, 'view_tasks.html', context)
     
-    
 def view_tasks(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        return redirect('login')  # Redirect to the login page (adjust URL name as needed)
+
     # Start with all tasks assigned to the reporting manager
     tasks = Task.objects.filter(assigned_to__reporting_manager=request.user)
 
@@ -401,7 +411,7 @@ def view_tasks(request):
         tasks = tasks.filter(assigned_to_id=employee_id)
 
     # Filter by status (if selected)
-    status = request.GET.get('status', '').strip()      
+    status = request.GET.get('status', '').strip()
     if status:
         status_mapping = {
             'pending': 'Pending',
@@ -453,6 +463,10 @@ def view_tasks(request):
 
 # Add a task
 def add_task(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        return redirect('login')  # Redirect to the login page (adjust URL name as needed)
+
     if request.method == 'POST':
         title = request.POST['title']
         description = request.POST['description']
@@ -461,13 +475,20 @@ def add_task(request):
         start_date = request.POST['start_date']
         end_date = request.POST['end_date']
         assigned_to = Users.objects.get(id=request.POST['assigned_to'])
+
         Task.objects.create(
             title=title, description=description, priority=priority,
             task_type=task_type, start_date=start_date, end_date=end_date,
             assigned_to=assigned_to, created_by=request.user
         )
         return redirect('viewtasks')
-    employees = Users.objects.filter(reporting_manager=request.user)
+
+    # Ensure the user is a reporting manager before filtering employees
+    if request.user.is_authenticated:
+        employees = Users.objects.filter(reporting_manager=request.user)
+    else:
+        employees = Users.objects.none()  # No employees if the user is not authenticated
+
     return render(request, 'add_task.html', {'employees': employees})
 
 # Edit a task
@@ -511,6 +532,20 @@ def task_details(request, task_id):
 # Review Employees
 
 def view_reviews(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        return redirect('login')  # Redirect to the login page (adjust URL name as needed)
+
+    # Fetch the user's role
+    user_role = request.user.role.role_name if request.user.role else None
+
+    # Check if the user has the required role (admin, team leader, or manager)
+    allowed_roles = ['admin', 'team leader', 'manager','Admin', 'Team Leader', 'Manager','ADMIN', 'TEAM LEADER', 'MANAGER']
+    
+    if user_role not in allowed_roles:
+        messages.error(request, "You do not have permission to view these reviews.")  # Add error message
+        return redirect('/')  # Redirect to the home page with the error message
+
     # Extract query parameters for filtering
     department_filter = request.GET.get('department')
     employee_filter = request.GET.get('employee_filter')
@@ -711,3 +746,363 @@ def delete_review(request, review_id):
     
     # Redirect back to the review list
     return redirect('view_reviews')
+
+
+# Leave management
+@login_required
+def leave_dashboard(request):
+    # Ensure the user is authenticated
+    if not request.user.is_authenticated:
+        messages.error(request, 'You need to be logged in to access this page.')  # Add an error message
+        return redirect('login')  # Redirect to login page if not authenticated
+
+    # Check if the user has a valid role and handle redirection based on the role
+    if request.user.role:  # Ensure the user has a role assigned
+        user_role = request.user.role.role_name  # Assuming `role` is a ForeignKey to the `Roles` model
+
+        if user_role == 'Admin':
+            # Redirect to admin leave dashboard
+            return redirect('leave_dashboard_admin')
+        elif user_role == 'Employee':
+            # Redirect to employee leave dashboard
+            return redirect('leave_dashboard_employee')
+        elif user_role == 'Team Leader' or user_role == 'Manager':
+            # Redirect for team leaders or managers (if applicable)
+            return redirect('leave_dashboard_admin')  # Example for team leaders/managers
+        else:
+            # If the user role is unknown, return to the home page or show an error
+            return redirect('home')
+    else:
+        # If the user does not have a role, redirect to home page or show an error
+        return redirect('home')
+
+@login_required
+def leave_dashboard_employee(request):
+    # Fetch the employee's leave data
+     # Fetch all pending leave requests for the admin to approve or reject
+    pending_leaves = Leave.objects.filter(status=Leave.Status.PENDING)
+
+    # Fetch all leaves for the logged-in employee (employee-specific view)
+    employee_leaves = Leave.objects.filter(employee=request.user)
+    
+    # Fetch the leave quotas for the logged-in user
+    # Calculate leave type summary (total requests for each leave type)
+    leave_type_counts = Counter(leave.get_leave_type_display() for leave in pending_leaves)
+
+    # Convert the Counter object to a dictionary
+    leave_type_summary = dict(leave_type_counts)
+
+    # Fetch leave quotas for the logged-in admin (display quota for all employees, admin is authorized to view)
+    leave_quotas = LeaveQuota.objects.filter(employee=request.user)
+
+    # Initialize a dictionary to store remaining leave quotas for each leave type
+    remaining_leave_quotas = {
+        'Sick_Leave': 0,
+        'Casual_Leave': 0,
+        'Privilege_Leave': 0,
+    }
+
+    # Get the remaining leave quotas for the logged-in user (admin)
+    for quota in leave_quotas:
+        if quota.leave_type == LeaveQuota.LeaveType.SICK_LEAVE:
+            remaining_leave_quotas['Sick_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.CASUAL_LEAVE:
+            remaining_leave_quotas['Casual_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.PRIVILEGE_LEAVE:
+            remaining_leave_quotas['Privilege_Leave'] = quota.remain_quota
+
+    # Subtract the number of approved leaves from the remaining leave quotas
+    for leave in employee_leaves:
+        if leave.status == Leave.Status.APPROVED:
+            if leave.leave_type == Leave.LeaveType.SICK_LEAVE:
+                remaining_leave_quotas['Sick_Leave'] -= 1
+            elif leave.leave_type == Leave.LeaveType.CASUAL_LEAVE:
+                remaining_leave_quotas['Casual_Leave'] -= 1
+            elif leave.leave_type == Leave.LeaveType.PRIVILEGE_LEAVE:
+                remaining_leave_quotas['Privilege_Leave'] -= 1
+
+    # Make sure the total leaves applied are in sync with the remaining quota
+    # Ensure that any changes in the quota are reflected in the user's leave dashboard
+
+    # Pass the leave data, leave type counts, and remaining leave quotas to the template
+    return render(request, 'leave_dashboard_employee.html', {
+        'pending_leaves': pending_leaves,
+        'employee_leaves': employee_leaves,
+        'leave_type_summary': leave_type_summary,
+        'remaining_leave_quotas': remaining_leave_quotas,
+    })
+
+
+
+
+
+
+
+
+
+@login_required
+def leave_dashboard_admin(request):
+    # Fetch all pending leave requests for the admin to approve or reject
+    pending_leaves = Leave.objects.filter(status=Leave.Status.PENDING)
+
+    # Fetch all leaves for the logged-in employee (employee-specific view)
+    employee_leaves = Leave.objects.filter(employee=request.user)
+
+    # Calculate leave type summary (total requests for each leave type)
+    leave_type_counts = Counter(leave.get_leave_type_display() for leave in pending_leaves)
+
+    # Convert the Counter object to a dictionary
+    leave_type_summary = dict(leave_type_counts)
+
+    # Fetch leave quotas for the logged-in admin (display quota for all employees, admin is authorized to view)
+    leave_quotas = LeaveQuota.objects.filter(employee=request.user)
+
+    # Initialize a dictionary to store remaining leave quotas for each leave type
+    remaining_leave_quotas = {
+        'Sick_Leave': 0,
+        'Casual_Leave': 0,
+        'Privilege_Leave': 0,
+    }
+
+    # Get the remaining leave quotas for the logged-in user (admin)
+    for quota in leave_quotas:
+        if quota.leave_type == LeaveQuota.LeaveType.SICK_LEAVE:
+            remaining_leave_quotas['Sick_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.CASUAL_LEAVE:
+            remaining_leave_quotas['Casual_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.PRIVILEGE_LEAVE:
+            remaining_leave_quotas['Privilege_Leave'] = quota.remain_quota
+
+    # Subtract the number of approved leaves from the remaining leave quotas
+    for leave in employee_leaves:
+        if leave.status == Leave.Status.APPROVED:
+            if leave.leave_type == Leave.LeaveType.SICK_LEAVE:
+                remaining_leave_quotas['Sick_Leave'] -= 1
+            elif leave.leave_type == Leave.LeaveType.CASUAL_LEAVE:
+                remaining_leave_quotas['Casual_Leave'] -= 1
+            elif leave.leave_type == Leave.LeaveType.PRIVILEGE_LEAVE:
+                remaining_leave_quotas['Privilege_Leave'] -= 1
+
+    # Pass the pending leaves, employee leaves, leave type summary, and leave quotas to the template
+    return render(request, 'leave_dashboard_admin.html', {
+        'pending_leaves': pending_leaves,
+        'employee_leaves': employee_leaves,
+        'leave_type_summary': leave_type_summary,
+        'remaining_leave_quotas': remaining_leave_quotas,  # Pass remaining leave quotas for the logged-in admin
+    })
+
+    
+    
+@login_required
+def apply_leave(request):
+    # Fetch the leave quotas for the logged-in user
+    leave_quotas = LeaveQuota.objects.filter(employee=request.user)
+
+    # Initialize a list to hold available leave types based on remaining quotas
+    available_leave_types = []
+    
+    remaining_leave_quotas = {
+        'Sick_Leave': 0,
+        'Casual_Leave': 0,
+        'Privilege_Leave': 0,
+    }
+
+    # Get the remaining leave quotas for the current user
+    for quota in leave_quotas:
+        if quota.leave_type == LeaveQuota.LeaveType.SICK_LEAVE:
+            remaining_leave_quotas['Sick_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.CASUAL_LEAVE:
+            remaining_leave_quotas['Casual_Leave'] = quota.remain_quota
+        elif quota.leave_type == LeaveQuota.LeaveType.PRIVILEGE_LEAVE:
+            remaining_leave_quotas['Privilege_Leave'] = quota.remain_quota
+            
+    # Check available leave types based on the remaining quota
+    for quota in leave_quotas:
+        if quota.remain_quota > 0:  # Only add leave types with a remaining quota
+            available_leave_types.append(quota.leave_type)
+
+    if request.method == 'POST':
+        leave_type = request.POST.get('leave_type')
+
+        # Check if the selected leave type is available (i.e., has remaining quota)
+        if leave_type not in available_leave_types:
+            messages.error(request, 'Selected leave type is not available due to insufficient quota.')
+            return redirect('apply_leave')  # Redirect back to the leave application form
+
+        reason = request.POST.get('reason')
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+
+        # Convert the date strings to datetime objects
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Calculate total days of leave
+        total_days = (end_date - start_date).days + 1  # Total days of leave
+
+        # Create a new leave request
+        leave = Leave.objects.create(
+            employee=request.user,
+            leave_type=leave_type,
+            reason=reason,
+            start_date=start_date,
+            end_date=end_date,
+            total_days=total_days,
+            status=Leave.Status.PENDING
+        )
+
+        # Redirect based on the user's role
+        user_role = request.user.role.role_name
+        if user_role == 'Admin':
+            return redirect('leave_dashboard_admin')
+        elif user_role == 'Employee':
+            return redirect('leave_dashboard_employee')
+        else:
+            return redirect('home')  # In case the role is unknown
+
+    return render(request, 'apply_leave.html', {
+        'available_leave_types': available_leave_types,'remaining_leave_quotas': remaining_leave_quotas,  # Pass available leave types
+    })
+
+
+@login_required
+def edit_leave(request, leave_id):
+    leave = get_object_or_404(Leave, leave_id=leave_id)
+
+    if request.method == 'POST':
+        leave_type = request.POST.get('leave_type')
+        reason = request.POST.get('reason')
+        start_date_str = request.POST.get('start_date')
+        end_date_str = request.POST.get('end_date')
+
+        # Convert the date strings to datetime objects
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+
+        # Calculate total days of leave
+        total_days = (end_date - start_date).days + 1
+
+        # Update the leave request with the new details
+        leave.leave_type = leave_type
+        leave.reason = reason
+        leave.start_date = start_date
+        leave.end_date = end_date
+        leave.total_days = total_days
+        leave.status = Leave.Status.PENDING  # Reset status to PENDING if edited
+        leave.save()
+
+        # Redirect to the employee dashboard after editing the leave
+        return redirect('leave_dashboard_employee')
+
+    return render(request, 'edit_leave.html', {'leave': leave})
+
+# Admin/Manager can approve or reject leave
+@login_required
+def approve_or_reject_leave(request, leave_id):
+    leave = Leave.objects.get(leave_id=leave_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'approve':
+            leave.status = Leave.Status.APPROVED
+            leave.approved_by = request.user
+            leave.save()
+        elif action == 'reject':
+            leave.status = Leave.Status.REJECTED
+            leave.approved_by = request.user
+            leave.save()
+
+        # After approval or rejection, redirect to the admin dashboard
+        return redirect('leave_dashboard_admin')
+
+    return render(request, 'approve_or_reject_leave.html', {'leave': leave})
+
+
+
+def leave_quota_view(request):
+    if request.method == "POST":
+        employee_id = request.POST.get('employee')
+        sl_quota = request.POST.get('sl_quota')
+        pl_quota = request.POST.get('pl_quota')
+        cl_quota = request.POST.get('cl_quota')
+
+        quotas = [
+            {'leave_type': 'SL', 'total_quota': int(sl_quota)},
+            {'leave_type': 'PL', 'total_quota': int(pl_quota)},
+            {'leave_type': 'CL', 'total_quota': int(cl_quota)}
+        ]
+
+        employee = get_object_or_404(Users, id=employee_id)
+
+        for quota in quotas:
+            LeaveQuota.objects.update_or_create(
+                employee=employee,
+                leave_type=quota['leave_type'],
+                defaults={
+                    'total_quota': quota['total_quota'],
+                    'used_quota': 0  # Reset used quota for simplicity
+                }
+            )
+
+        return JsonResponse({'message': 'Leave quotas updated successfully!'})
+
+    # Fetch all employees and their respective leave quotas
+    employees = Users.objects.all()
+    leave_quotas = LeaveQuota.objects.select_related('employee')
+
+    # Group leave quotas by employee
+    employee_data = {}
+    for quota in leave_quotas:
+        if quota.employee.id not in employee_data:
+            employee_data[quota.employee.id] = {
+                'employee_name': quota.employee.username,
+                'SL': 0,  # Default values
+                'PL': 0,
+                'CL': 0
+            }
+        employee_data[quota.employee.id][quota.leave_type] = quota.remain_quota
+
+    return render(request, 'leave_quota.html', {
+        'employees': employees,
+        'employee_data': employee_data
+    })
+
+def edit_leave_quota_view(request, employee_id):
+    # Fetch the employee and their leave quotas
+    employee = get_object_or_404(Users, id=employee_id)
+    leave_quotas = LeaveQuota.objects.filter(employee=employee)
+
+    # Initialize quotas
+    sl_quota = leave_quotas.filter(leave_type='SL').first()
+    pl_quota = leave_quotas.filter(leave_type='PL').first()
+    cl_quota = leave_quotas.filter(leave_type='CL').first()
+
+    # Handle form submission
+    if request.method == 'POST':
+        # Convert form data to integers
+        sl_quota_value = int(request.POST.get('sl_quota', 0))
+        pl_quota_value = int(request.POST.get('pl_quota', 0))
+        cl_quota_value = int(request.POST.get('cl_quota', 0))
+
+        # Update leave quotas
+        if sl_quota:
+            sl_quota.total_quota = sl_quota_value
+            sl_quota.save()
+        if pl_quota:
+            pl_quota.total_quota = pl_quota_value
+            pl_quota.save()
+        if cl_quota:
+            cl_quota.total_quota = cl_quota_value
+            cl_quota.save()
+
+        return redirect('leave_quota_view')  # Replace 'leave_quota' with the correct URL name for your main quota page
+
+    context = {
+        'employee': employee,
+        'sl_quota': sl_quota.total_quota if sl_quota else 0,
+        'pl_quota': pl_quota.total_quota if pl_quota else 0,
+        'cl_quota': cl_quota.total_quota if cl_quota else 0,
+    }
+    return render(request, 'edit_leave_quota.html', context)
+

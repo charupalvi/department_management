@@ -42,4 +42,15 @@ urlpatterns = [
     path('see-comments/<int:review_id>/', views.see_comments, name='see_comments'),
     path('edit-review/<int:review_id>/', views.edit_review, name='edit_review'),
     path('delete-review/<int:review_id>/', views.delete_review, name='delete_review'),
+    # Leave Management:
+    path('leave_dashboard/', views.leave_dashboard, name='leave_dashboard'),
+    path('leave_dashboard_employee/', views.leave_dashboard_employee, name='leave_dashboard_employee'),
+    path('leave_dashboard_admin/', views.leave_dashboard_admin, name='leave_dashboard_admin'),
+    path('apply_leave/', views.apply_leave, name='apply_leave'),
+    path('approve_or_reject_leave/<int:leave_id>/', views.approve_or_reject_leave, name='approve_or_reject_leave'),
+    path('edit_leave/<int:leave_id>/', views.edit_leave, name='edit_leave'),
+    path('leave-quota/', views.leave_quota_view, name='leave_quota_view'),
+    path('leave-quota/edit/<int:employee_id>/', views.edit_leave_quota_view, name='edit_leave_quota'),
+
+
 ]
