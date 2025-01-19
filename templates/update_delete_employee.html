@@ -58,7 +58,7 @@
 
             <div class="form-group">
                 <label for="date_of_joining"><strong>Date of Joining:</strong></label>
-                <input type="date" id="date_of_joining" name="date_of_joining" value="{{ employee.date_of_joining }}" required>
+                <input type="date" id="date_of_joining" name="date_of_joining" value="{{ employee.date_of_joining|date:'Y-m-d' }}" required>
             </div>
 
             <div class="form-group">
