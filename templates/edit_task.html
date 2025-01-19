@@ -46,12 +46,12 @@
 
             <div class="form-group">
                 <label for="start_date"><strong>Start Date:</strong></label>
-                <input type="date" id="start_date" name="start_date" value="{{ task.start_date }}" required>
+                <input type="date" id="start_date" name="start_date" value="{{ task.start_date|date:'Y-m-d' }}" required>
             </div>
 
             <div class="form-group">
                 <label for="end_date"><strong>End Date:</strong></label>
-                <input type="date" id="end_date" name="end_date" value="{{ task.end_date }}" required>
+                <input type="date" id="end_date" name="end_date" value="{{ task.end_date|date:'Y-m-d' }}" required>
             </div>
 
             <div class="form-group">
